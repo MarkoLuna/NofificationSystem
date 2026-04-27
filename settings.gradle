@@ -1,0 +1,6 @@
+rootProject.name = 'notification-system'
+
+include 'email-notification'
+include 'notification-service'
+include 'push-notification'
+include 'sms-notification'
