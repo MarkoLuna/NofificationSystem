@@ -1,0 +1,26 @@
+info:
+  name: Send notification
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: http://localhost:8080/notifications/send
+  headers:
+    - name: Authorization
+      value: "{{token_type}} {{auth_token}}"
+  body:
+    type: json
+    data: |-
+      {
+        "channel": "EMAIL",
+        "category": "MOVIES",
+        "message": "hello message"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

@@ -1,0 +1,32 @@
+package com.email.notification.service.impl;
+
+import com.email.notification.service.UserService;
+import com.notification.api.client.UsersClient;
+import com.notification.api.dto.UserDto;
+import com.notification.api.model.NotificationCategory;
+import com.notification.api.model.NotificationChannel;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Log4j2
+@Service
+@RequiredArgsConstructor
+public class UserServiceImpl implements UserService {
+
+    private final UsersClient usersClient;
+
+    @Override
+    public List<UserDto> getUsersByChannelAndCategory(NotificationChannel channel, NotificationCategory category) {
+        log.trace("Getting users by channel and category: {} {}", channel, category);
+
+        try {
+            return usersClient.getUsersByChannelAndCategory(channel, category);
+        } catch (Exception e) {
+            log.warn("error loading users to notify", e);
+            return List.of();
+        }
+    }
+}

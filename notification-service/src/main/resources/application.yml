@@ -1,0 +1,65 @@
+server:
+  port: 8080
+
+springdoc:
+  packagesToScan: com.notification
+  pathsToMatch: /notifications/**
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+
+####### resource server configuration properties
+spring:
+  application:
+    name: notification-service
+  threads:
+    virtual:
+      enabled: true
+  data:
+    mongodb:
+      host: localhost
+      port: 27017
+      database: notifications_db
+      auto-index-creation: true
+      # uri: mongodb://localhost:27017/notifications_db
+  security:
+    oauth2:
+      client:
+        registration:
+          dev-realm:
+            provider: keycloak
+            client-id: newClient
+            client-secret: newClientSecret
+            authorization-grant-type: authorization_code
+            scope: openid,profile,email
+            redirect-uri: http://localhost:8000/login/oauth2/code/dev-realm
+            client-name: "NSA2 Keycloak"
+            client-authentication-method: client_secret_basic
+        
+        # registration:
+          keycloak:
+            client-id: login-app
+            authorization-grant-type: authorization_code
+            scope: openid
+        provider:
+          keycloak:
+            client-id: dev-realm
+            issuer-uri: ${spring.security.oauth2.resourceserver.jwt.issuer-uri}
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8000/realms/dev
+          user-name-attribute: preferred_username
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+
+notification:
+  kafka:
+    topics:
+      email: email-notification.v1
+      sms: sms-notification.v1
+      push: push-notification.v1

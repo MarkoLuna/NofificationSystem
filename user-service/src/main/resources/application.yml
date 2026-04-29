@@ -1,0 +1,46 @@
+server:
+  port: 8084
+
+springdoc:
+  packagesToScan: com.users
+  pathsToMatch: /users/**
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+
+####### resource server configuration properties
+spring:
+  application:
+    name: users-service
+  threads:
+    virtual:
+      enabled: true
+  security:
+    oauth2:
+      client:
+        registration:
+          dev-realm:
+            provider: keycloak
+            client-id: newClient
+            client-secret: newClientSecret
+            authorization-grant-type: authorization_code
+            scope: openid,profile,email
+            redirect-uri: http://localhost:8000/login/oauth2/code/dev-realm
+            client-name: "NSA2 Keycloak"
+            client-authentication-method: client_secret_basic
+        
+        # registration:
+          keycloak:
+            client-id: login-app
+            authorization-grant-type: authorization_code
+            scope: openid
+        provider:
+          keycloak:
+            client-id: dev-realm
+            issuer-uri: ${spring.security.oauth2.resourceserver.jwt.issuer-uri}
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8000/realms/dev
+          user-name-attribute: preferred_username
+

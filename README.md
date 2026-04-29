@@ -1,94 +1,162 @@
 # 🚀 Notification System
 
-A robust, multi-channel notification system designed to deliver categorized messages to users based on their individual preferences and subscriptions. This project implements a scalable architecture for handling notifications across various channels (SMS, Email, and Push) with a focus on extensibility and auditability.
+A robust, multi-channel notification system designed to deliver categorized messages asynchronously via Kafka. This project implements a scalable, event-driven architecture using the **Strategy Pattern** for channel selection, **Keycloak** for OAuth2 identity management, and **MongoDB** for persistence.
 
 ---
 
 ## 📋 System Overview
 
-The system receives messages containing a **Category** and a **Body**. It then evaluates a pre-populated set of users to determine who should receive the message based on two criteria:
-1.  **Subscription**: Does the user subscribe to the message's category?
-2.  **Channels**: Which communication channels has the user opted into?
+The system receives a notification request containing a **Channel**, **Category**, and **Message Body**. The orchestrator validates the request against the authenticated user's identity and publishes the message to the appropriate Kafka topic for asynchronous delivery by dedicated channel consumers.
 
-### Core Entities
+### Message Categories
+- 🏅 **SPORTS**
+- 💰 **FINANCE**
+- 🎬 **MOVIES**
 
-#### **Message Categories**
-- 🏅 **Sports**
-- 💰 **Finance**
-- 🎬 **Movies**
-
-#### **Notification Channels**
+### Notification Channels
 - 📱 **SMS**
-- 📧 **E-Mail**
-- 🔔 **Push Notification**
+- 📧 **EMAIL**
+- 🔔 **PUSH**
 
 ---
 
 ## 🏗️ Architecture
 
-The project is structured as a **Multi-Module Gradle Project** to ensure high cohesion and loose coupling between different notification strategies.
+The project is a **Multi-Module Gradle Project** following an **Event-Driven Architecture**. For a detailed technical deep-dive, see [architecture.md](architecture.md).
 
-### 🧩 Module Structure
--   `notification-service`: The core orchestrator that receives messages and executes the dispatch strategy.
--   `email-notification`: Dedicated logic for Email delivery.
--   `sms-notification`: Dedicated logic for SMS delivery.
--   `push-notification`: Dedicated logic for Push Notification delivery.
+### 🧩 Module Structure & Port Assignments
+
+| Module | Port | Responsibility |
+| :--- | :--- | :--- |
+| `keycloak` | `8000` | OAuth2 Authorization Server |
+| `kafka` | `9092` | Message Broker |
+| `mongodb` | `27017` | Notification Persistence |
+| `notification-service` | `8080` | Orchestrator, Kafka Producer, Resource Server |
+| `user-service` | `8084` | User Management API, Resource Server |
+| `email-notification` | `8081` | Kafka Consumer - Email Delivery |
+| `sms-notification` | `8082` | Kafka Consumer - SMS Delivery |
+| `push-notification` | `8083` | Kafka Consumer - Push Delivery |
+| `notification-api` | `N/A` | Shared Library - Common DTOs and Enums |
 
 ### 🛠️ Design Patterns
--   **Strategy Pattern**: Used to dynamically select the appropriate notification handler based on user preferences.
--   **Independence**: Each channel is managed by its own class/module, ensuring that changes to one delivery method do not impact others.
--   **Audit Logging**: Every notification attempt is persisted with comprehensive metadata (Message Type, Channel, User Data, Timestamp) to verify successful delivery.
+- **Strategy Pattern**: Dynamically selects the notification handler (`EmailNotificationStrategy`, `SmsNotificationStrategy`, `PushNotificationStrategy`) based on the requested channel.
+- **Event-Driven (Producer-Consumer)**: `notification-service` publishes to Kafka topics, and channel-specific modules consume and deliver.
+- **Resource Server**: All services are secured as OAuth2 Resource Servers, validating JWTs issued by Keycloak.
 
 ---
 
-## 👤 User Model (Mock)
+## 📨 Kafka Topics (v1)
 
-Users are pre-populated in the system with the following data structure:
-
-| Field | Description |
+| Topic | Channel |
 | :--- | :--- |
-| **ID** | Unique identifier for the user. |
-| **Name** | Full name of the subscriber. |
-| **Email** | Valid email address for E-Mail notifications. |
-| **Phone Number** | Contact number for SMS notifications. |
-| **Subscribed** | List of categories (Sports, Finance, Movies). |
-| **Channels** | List of preferred delivery methods (SMS, E-Mail, Push). |
+| `email-notification.v1` | EMAIL |
+| `sms-notification.v1` | SMS |
+| `push-notification.v1` | PUSH |
 
----
+### Kafka Message Schema (`NotificationMessage`)
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `message` | `String` | The notification body content. |
+| `category` | `NotificationCategory` | `SPORTS`, `FINANCE`, or `MOVIES`. |
+| `userName` | `String` | Authenticated username (from JWT `preferred_username` claim). |
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Java 21
-- Gradle (Wrapper included)
+- **Java 21**
+- **Docker & Docker Compose**
+- **Gradle** (Wrapper included)
 
-### Build the Project
+### 1. Start Infrastructure
+Start the required dependencies (Kafka, MongoDB, Keycloak) using Docker:
+```bash
+docker compose -f docker/docker-compose-deps.yml up -d
+```
+
+### 2. Build the Project
 ```bash
 ./gradlew build
 ```
 
-### Run the Service
+### 3. Run Services
+Start the core services and consumers:
 ```bash
+# Core Services
+./gradlew :user-service:bootRun
 ./gradlew :notification-service:bootRun
+
+# Consumers
+./gradlew :email-notification:bootRun
+./gradlew :sms-notification:bootRun
+./gradlew :push-notification:bootRun
 ```
 
 ---
 
-## 📊 Persistence & Verification
+## 🔐 Authentication (Keycloak)
 
-To ensure reliability, the system stores all relevant delivery information:
-- ✅ **Metadata**: Message type and content.
-- ✅ **Delivery Info**: Notification channel used.
-- ✅ **User Context**: Specific user data at the time of sending.
-- ✅ **Timestamp**: Exact time of the notification attempt.
-- ✅ **Status**: Delivery result (for future implementation).
+Authentication is handled by **Keycloak** (running on port `8000`). All services are configured as **OAuth2 Resource Servers**.
+
+### Keycloak Realm Details
+- **Realm**: `dev`
+- **Issuer URI**: `http://localhost:8000/realms/dev`
+- **Default Clients**:
+    - `newClient`: Client for application access (Secret: `newClientSecret`)
+
+### Obtaining a Token
+You can obtain a token using the Keycloak Token Endpoint:
+`POST http://localhost:8000/realms/dev/protocol/openid-connect/token`
 
 ---
+
+## 📡 API Reference
+
+All endpoints require a valid `Bearer` token from Keycloak.
+
+### 🔔 Notification Service (`:8080`)
+
+#### Send Notification
+`POST /notifications/send`
+```json
+{
+  "channel": "EMAIL",
+  "category": "SPORTS",
+  "message": "Your team just scored!"
+}
+```
+
+#### List My Notifications
+`GET /notifications/my`
+*Returns notifications created by the authenticated user.*
+
+#### Filter Notifications
+`GET /notifications?channel=EMAIL&category=SPORTS`
+
+### 👤 User Service (`:8084`)
+
+#### Get Users by Subscription
+`GET /users?channel=EMAIL&category=SPORTS`
+
+---
+
+## 🧪 Testing & Documentation
+
+### 🛠️ Bruno Collection
+A comprehensive API collection is available in the `.bruno/NotificationSystem` directory. Import it into [Bruno](https://www.usebruno.com/) to quickly test all endpoints.
+
+### 📖 Swagger UI (OpenAPI)
+Each service provides interactive documentation via Swagger UI:
+- **Notification Service**: `http://localhost:8080/swagger-ui.html`
+- **User Service**: `http://localhost:8084/swagger-ui.html`
 
 ---
 
 ## 🛠️ Tech Stack
-- **Framework**: Spring Boot 4.0.6
+- **Framework**: Spring Boot 3.4.5
 - **Language**: Java 21
+- **Messaging**: Apache Kafka (Event-Driven Architecture)
+- **Database**: MongoDB (Persistence)
+- **Identity Provider**: Keycloak (OAuth2)
 - **Build Tool**: Gradle (Multi-module)
-- **Documentation**: SpringDoc OpenAPI (Swagger)
+- **API Documentation**: SpringDoc OpenAPI (Swagger)

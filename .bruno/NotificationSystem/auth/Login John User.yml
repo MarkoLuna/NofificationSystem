@@ -1,0 +1,43 @@
+info:
+  name: "Login John User "
+  type: http
+  seq: 1
+
+http:
+  method: post
+  url: http://localhost:8000/realms/dev/protocol/openid-connect/token
+  headers:
+    - name: content-type
+      value: application/x-www-form-urlencoded
+  body:
+    type: form-urlencoded
+    data:
+      - name: client_id
+        value: newClient
+      - name: client_secret
+        value: newClientSecret
+      - name: username
+        value: john@test.com
+      - name: password
+        value: "123"
+      - name: grant_type
+        value: password
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        var jsonData = res.getBody();
+        if (jsonData["access_token"] != null) {
+            bru.setEnvVar("auth_token", jsonData["access_token"]);
+        }
+        if (jsonData["token_type"] != null) {
+            bru.setEnvVar("token_type", jsonData["token_type"]);
+        }
+
+settings:
+  encodeUrl: false
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
