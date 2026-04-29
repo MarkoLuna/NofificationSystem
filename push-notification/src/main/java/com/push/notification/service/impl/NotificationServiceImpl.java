@@ -6,7 +6,6 @@ import com.push.notification.service.NotificationService;
 import com.push.notification.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 @Log4j2
@@ -30,7 +29,8 @@ public class NotificationServiceImpl implements NotificationService {
 
     /**
      * Send push notification.
-     * @param id mail account to send the email
+     * 
+     * @param id      mail account to send the email
      * @param message message to send in the email
      */
     private void sendPushNotification(String id, NotificationMessage message) {

@@ -6,7 +6,6 @@ import com.sms.sms.service.NotificationService;
 import com.sms.sms.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 @Log4j2
@@ -18,22 +17,23 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void processNotificationMessage(NotificationMessage message) {
-        log.info("Sending push notification from user '{}': [{}] {}",
+        log.info("Sending sms notification from user '{}': [{}] {}",
                 message.getUserName(), message.getCategory(), message.getMessage());
 
-        userService.getUsersByChannelAndCategory(NotificationChannel.PUSH, message.getCategory())
+        userService.getUsersByChannelAndCategory(NotificationChannel.SMS, message.getCategory())
                 .stream()
                 // filter out user who created the notification
                 .filter(user -> !message.getUserName().equals(user.getName()))
-                .forEach(user -> sendPushNotification(user.getId(), message));
+                .forEach(user -> sendSmsNotification(user.getPhoneNumber(), message));
     }
 
     /**
      * Send sms notification.
+     * 
      * @param phoneNumber phone number to send the sms
-     * @param message message to send in the sms
+     * @param message     message to send in the sms
      */
-    private void sendPushNotification(String phoneNumber, NotificationMessage message) {
+    private void sendSmsNotification(String phoneNumber, NotificationMessage message) {
         /*
          * simulate send sms notification message.
          */

@@ -4,6 +4,13 @@ import com.notification.api.dto.UserDto;
 import com.notification.api.model.NotificationCategory;
 import com.notification.api.model.NotificationChannel;
 import com.users.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.http.HttpStatus;
@@ -19,14 +26,30 @@ import java.util.List;
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
+@Tag(name = "User Management", description = "Endpoints for user lookup and management")
 public class UsersController {
 
     private final UserService userService;
 
+    @Operation(
+            summary = "Get users by channel and category",
+            description = "Retrieves a list of users subscribed to a specific notification channel and category.",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Successfully retrieved subscribers",
+                            content = @Content(array = @ArraySchema(schema = @Schema(implementation = UserDto.class)))
+                    ),
+                    @ApiResponse(responseCode = "401", description = "Unauthorized"),
+                    @ApiResponse(responseCode = "403", description = "Forbidden")
+            }
+    )
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
     public List<UserDto> getUsersByChannelAndCategory(
+            @Parameter(description = "Notification channel (e.g., EMAIL, SMS)", required = true)
             @RequestParam NotificationChannel channel,
+            @Parameter(description = "Notification category (e.g., SPORTS, FINANCE)", required = true)
             @RequestParam NotificationCategory category) {
         log.debug("Requesting users for channel: {} and category: {}", channel, category);
         return userService.getUsersByChannelAndCategory(channel, category);
