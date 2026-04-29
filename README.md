@@ -33,6 +33,7 @@ The project is a **Multi-Module Gradle Project** following an **Event-Driven Arc
 | `mongodb` | `27017` | Notification Persistence |
 | `notification-service` | `8080` | Orchestrator, Kafka Producer, Resource Server |
 | `user-service` | `8084` | User Management API, Resource Server |
+| `notifications-app` | `5173` | Frontend Web Application (React/Vite) |
 | `email-notification` | `8081` | Kafka Consumer - Email Delivery |
 | `sms-notification` | `8082` | Kafka Consumer - SMS Delivery |
 | `push-notification` | `8083` | Kafka Consumer - Push Delivery |
@@ -65,6 +66,7 @@ The project is a **Multi-Module Gradle Project** following an **Event-Driven Arc
 
 ### Prerequisites
 - **Java 21**
+- **Node.js** (LTS recommended)
 - **Docker & Docker Compose**
 - **Gradle** (Wrapper included)
 
@@ -91,6 +93,15 @@ Start the core services and consumers:
 ./gradlew :sms-notification:bootRun
 ./gradlew :push-notification:bootRun
 ```
+
+### 4. Start Frontend
+Navigate to the frontend directory and start the development server:
+```bash
+cd notifications-app
+npm install
+npm run dev
+```
+The application will be accessible at `http://localhost:5173`. For more details, see the [frontend README](notifications-app/README.md).
 
 ---
 
@@ -153,6 +164,8 @@ Each service provides interactive documentation via Swagger UI:
 ---
 
 ## 🛠️ Tech Stack
+
+### Backend
 - **Framework**: Spring Boot 3.4.5
 - **Language**: Java 21
 - **Messaging**: Apache Kafka (Event-Driven Architecture)
@@ -160,3 +173,10 @@ Each service provides interactive documentation via Swagger UI:
 - **Identity Provider**: Keycloak (OAuth2)
 - **Build Tool**: Gradle (Multi-module)
 - **API Documentation**: SpringDoc OpenAPI (Swagger)
+
+### Frontend
+- **Framework**: React 19
+- **Build Tool**: Vite 8
+- **UI Library**: Material UI (MUI) 9
+- **Navigation**: React Router 7
+- **Testing**: Vitest

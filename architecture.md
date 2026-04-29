@@ -10,11 +10,13 @@ The system architecture is centered around an **Event-Driven Core** with **Keycl
 
 ```mermaid
 graph TD
-    Client((External Client)) -->|POST /realms/dev/token| KC[Keycloak :8000]
-    Client -->|POST /notifications/send| NS[notification-service :8080]
-    Client -->|GET /notifications/my| NS
+    User((User)) -->|Interacts with| FE[notifications-app :5173]
+    
+    FE -->|POST /realms/dev/token| KC[Keycloak :8000]
+    FE -->|POST /notifications/send| NS[notification-service :8080]
+    FE -->|GET /notifications/my| NS
 
-    KC -->|issues JWT| Client
+    KC -->|issues JWT| FE
     NS -->|validates JWT with| KC
     US[user-service :8084] -->|validates JWT with| KC
 
@@ -49,22 +51,27 @@ graph TD
 
 ```mermaid
 sequenceDiagram
-    participant C as Client
+    participant U as User
+    participant FE as notifications-app :5173
     participant KC as Keycloak :8000
     participant NS as notification-service :8080
     participant K as Kafka Topics
     participant CH as Channel Consumers
     participant US as user-service :8084
 
-    C->>KC: POST /token (password grant)
-    KC-->>C: JWT (with preferred_username)
+    U->>FE: Enters Credentials
+    FE->>KC: POST /token (password grant)
+    KC-->>FE: JWT (with preferred_username)
+    FE->>FE: Store JWT in AuthContext
 
-    C->>NS: POST /notifications/send (Bearer JWT)
+    U->>FE: Submits Notification Form
+    FE->>NS: POST /notifications/send (Bearer JWT)
     NS->>NS: Validate JWT with Keycloak
     NS->>NS: Select Strategy (by Channel)
     NS->>NS: Persist to MongoDB
     NS->>K: Publish NotificationMessage {message, category, userName}
-    NS-->>C: 202 Accepted
+    NS-->>FE: 202 Accepted
+    FE-->>U: Show Success Toast
 
     par Asynchronous Delivery
         K->>CH: Consume NotificationMessage
@@ -108,6 +115,23 @@ Kafka topic names are externalized via `@ConfigurationProperties` in `KafkaTopic
 
 ---
 
+## 💻 Frontend Architecture
+
+The **notifications-app** is built using a modern React stack, designed to interact seamlessly with the event-driven backend.
+
+### 1. State Management & Auth
+- **React Context API**: Used for global state management, specifically for handling authentication status and user profile data.
+- **JWT Handling**: Tokens are stored in memory/context and included in the `Authorization` header for all API requests.
+
+### 2. Networking
+- **Axios Interceptors**: Global interceptors handle token injection and respond to `401 Unauthorized` errors by redirecting users to the login page, ensuring a secure session lifecycle.
+
+### 3. UI/UX
+- **Material UI (MUI)**: Provides a consistent, responsive design system.
+- **React Router**: Manages client-side routing, including protected routes that require authentication.
+
+---
+
 ## 📨 Kafka Message Schema (`NotificationMessage`)
 
 | Field | Type | Description |
@@ -136,6 +160,7 @@ The system implements a **Centralized Identity Provider** model using **Keycloak
 | `keycloak` | `8000` | Central Identity Provider (OIDC/OAuth2) |
 | `kafka` | `9092` | Event Streaming Platform |
 | `mongodb` | `27017` | Notification Persistence |
+| `notifications-app` | `5173` | Frontend Web Application (React/Vite) |
 | `notification-service` | `8080` | Notification API, Strategy Selection, Kafka Producer |
 | `user-service` | `8084` | User Management API (Subscriber Data) |
 | `email-notification` | `8081` | Email Consumer & Delivery |
