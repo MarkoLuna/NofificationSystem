@@ -31,8 +31,8 @@ The project is a **Multi-Module Gradle Project** following an **Event-Driven Arc
 | `keycloak` | `8000` | OAuth2 Authorization Server |
 | `kafka` | `9092` | Message Broker |
 | `mongodb` | `27017` | Notification Persistence |
-| `notification-service` | `8080` | Orchestrator, Kafka Producer, Resource Server |
-| `user-service` | `8084` | User Management API, Resource Server |
+| `notification-service` | `8080` | Orchestrator, Kafka Producer |
+| `user-service` | `8084` | User Management API |
 | `notifications-app` | `5173` | Frontend Web Application (React/Vite) |
 | `email-notification` | `8081` | Kafka Consumer - Email Delivery |
 | `sms-notification` | `8082` | Kafka Consumer - SMS Delivery |
