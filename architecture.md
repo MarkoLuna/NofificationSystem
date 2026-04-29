@@ -153,19 +153,24 @@ The system implements a **Centralized Identity Provider** model using **Keycloak
 
 ---
 
-## 📊 Deployment & Ports
+## ☸️ Kubernetes Deployment
 
-| Module | Port | Responsibility |
-| :--- | :--- | :--- |
-| `keycloak` | `8000` | Central Identity Provider (OIDC/OAuth2) |
-| `kafka` | `9092` | Event Streaming Platform |
-| `mongodb` | `27017` | Notification Persistence |
-| `notifications-app` | `5173` | Frontend Web Application (React/Vite) |
-| `notification-service` | `8080` | Notification API, Strategy Selection, Kafka Producer |
-| `user-service` | `8084` | User Management API (Subscriber Data) |
-| `email-notification` | `8081` | Email Consumer & Delivery |
-| `sms-notification` | `8082` | SMS Consumer & Delivery |
-| `push-notification` | `8083` | Push Consumer & Delivery |
+The system is designed to be deployed on **Kubernetes**, leveraging its orchestration capabilities for high availability and scalability.
+
+| Service Name | Type | K8s Port | Local Port (Docker) | Responsibility |
+| :--- | :--- | :--- | :--- | :--- |
+| `keycloak-svc` | `LoadBalancer` | `8080` | `8000` | Central Identity Provider |
+| `kafka-svc` | `ClusterIP` | `9092` | `9092` | Internal Message Broker |
+| `mongodb-svc` | `ClusterIP` | `27017` | `27017` | Persistent Notification Store |
+| `notifications-app` | `LoadBalancer` | `80` | `5173` | Frontend React Application |
+| `notification-service` | `ClusterIP` | `8080` | `8080` | API Orchestrator & Kafka Producer |
+| `user-service` | `ClusterIP` | `8080` | `8084` | User & Subscriber Metadata API |
+| `email-consumer` | `ClusterIP` | `8080` | `8081` | Email Delivery Worker |
+| `sms-consumer` | `ClusterIP` | `8080` | `8082` | SMS Delivery Worker |
+| `push-consumer` | `ClusterIP` | `8080` | `8083` | Push Delivery Worker |
+
+> [!NOTE]
+> **Port Isolation**: In a Kubernetes environment, each Pod receives its own IP address, allowing all backend services to run on the standard internal port (`8080`) without conflict. During local development via Docker Compose, unique host ports are mapped to `localhost` to prevent collisions.
 
 ---
 
@@ -174,3 +179,29 @@ The system implements a **Centralized Identity Provider** model using **Keycloak
 - **Metrics**: Spring Boot Actuator enabled on all microservices for health checks and performance monitoring.
 - **Persistence**: `notification-service` stores all accepted requests in **MongoDB** for audit trails and history.
 - **Logging**: Log4j2 with structured logging, including MDC context for tracing request flow through Kafka.
+
+---
+
+## 🚀 Scalability & Next Steps
+
+With the system running on Kubernetes, the following enhancements are recommended to optimize performance and resilience at scale:
+
+### 1. K8s-Native Orchestration
+- **Horizontal Pod Autoscaler (HPA)**: Automatically scale the number of pods for `notification-service` and `consumers` based on CPU/Memory usage or custom metrics.
+- **Ingress Controller (Nginx / Traefik)**: Implement a unified entry point for the `notifications-app` and `notification-service` with SSL termination and path-based routing.
+- **Helm Charts**: Standardize deployments using Helm for environment-specific configurations (Dev, Staging, Prod).
+- **KEDA (Kubernetes Event-driven Autoscaling)**: Scale notification consumers dynamically based on the number of messages waiting in Kafka topics.
+
+### 2. Data & Messaging Optimization
+- **Kafka Concurrency & Partitioning**:
+    - **Topic Partitioning**: Increase partition counts for high-traffic topics to allow more consumer instances to work in parallel within a consumer group.
+    - **Consumer Concurrency**: Tune the `spring.kafka.consumer.concurrency` property (supported in the consumer modules) to allow a single pod to spin up multiple listener threads. This optimizes resource utilization by processing multiple partitions per pod, reducing the need for excessive horizontal pod scaling for high-partition topics.
+- **MongoDB Indexing & Sharding**:
+    - **Indexing Strategy**: Maintain compound indexes on frequently queried fields, such as `{creator: 1, id: 1}` for user-specific notification history and `{channel: 1, category: 1}` for high-performance filtering. These indexes ensure O(log n) search complexity as the notification store grows into millions of records.
+    - **Sharding**: Implement sharding for the notifications collection to distribute write load and storage across multiple worker nodes, using a shard key that aligns with query patterns (e.g., `creator`).
+- **Redis Caching**: Deploy a Redis cluster to cache subscriber preferences and session data, reducing latency for `user-service` lookups.
+
+### 3. Resilience & Reliability
+- **Circuit Breakers (Resilience4j)**: Protect services from cascading failures, especially during inter-service communication with `user-service`.
+- **Dead Letter Queues (DLQ)**: Ensure that failed delivery attempts are routed to a separate Kafka topic for retry or manual intervention.
+
