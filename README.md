@@ -158,8 +158,8 @@ A comprehensive API collection is available in the `.bruno/NotificationSystem` d
 
 ### 📖 Swagger UI (OpenAPI)
 Each service provides interactive documentation via Swagger UI:
-- **Notification Service**: `http://localhost:8080/swagger-ui.html`
-- **User Service**: `http://localhost:8084/swagger-ui.html`
+- **Notification Service**: `http://localhost:8080/swagger-ui/index.html`
+- **User Service**: `http://localhost:8084/swagger-ui/index.html`
 
 ---
 
